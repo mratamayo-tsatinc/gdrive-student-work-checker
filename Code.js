@@ -1,3 +1,8 @@
+/*
+  * Google Apps Script to analyze a Google Drive folder and display the results in a Google Sheet.
+  * The script collects attributes of image files and logs them in a specified sheet.
+  * It also provides a custom menu to trigger the analysis.
+*/
 
 /**
  * Adds a custom menu to the Google Sheet when the document is opened.
