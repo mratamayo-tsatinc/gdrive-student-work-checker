@@ -232,8 +232,8 @@ function processStudentFolder(folder, path, results, studentName, studentId) {
 
 /**
  * Returns student folder records and scores for the modal UI.
- * Ensures _STUDENT_FOLDERS and _SCORE sheets exist.
- * @return {Object} {folders: [{name, id}], scores: {folderId: score}}
+ * Ensures _STUDENT_FOLDERS, _SCORE, _STUDENT_ANSWERS, and _STUDENT_RESULTS sheets exist.
+ * @return {Object} {folders: [{name, id}], scores: {folderId: score}, studentAnswers: {folderId: true}, studentResults: {folderId: true}}
  */
 function getStudentFoldersAndScores() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -262,7 +262,34 @@ function getStudentFoldersAndScores() {
     scores[scoreData[j][0]] = scoreData[j][1];
   }
 
-  return { folders: folders, scores: scores };
+  // Check _STUDENT_ANSWERS for analyzed folders
+  var answersSheet = ss.getSheetByName('_STUDENT_ANSWERS');
+  var studentAnswers = {};
+  if (answersSheet) {
+    var answersData = answersSheet.getDataRange().getValues();
+    for (var k = 1; k < answersData.length; k++) {
+      var folderId = answersData[k][1];
+      studentAnswers[folderId] = true;
+    }
+  }
+
+  // Check _STUDENT_RESULTS for evaluated folders
+  var resultsSheet = ss.getSheetByName('_STUDENT_RESULTS');
+  var studentResults = {};
+  if (resultsSheet) {
+    var resultsData = resultsSheet.getDataRange().getValues();
+    for (var m = 1; m < resultsData.length; m++) {
+      var folderId = resultsData[m][1];
+      studentResults[folderId] = true;
+    }
+  }
+
+  return {
+    folders: folders,
+    scores: scores,
+    studentAnswers: studentAnswers,
+    studentResults: studentResults
+  };
 }
 
 /**

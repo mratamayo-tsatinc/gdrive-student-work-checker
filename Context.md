@@ -78,4 +78,12 @@ Evaluate Button Functionality
 - Records the final score (folder ID and score) in the `_SCORE` sheet.
 - Displays a white overlay with a spinner during processing for user feedback.
 - Update the score column in the student task submission list
+
+Additional Feature: Point Deduction for Extra Files
+- Compares the number of files submitted by each student (from `_STUDENT_ANSWERS`) to the number required by the model answer (from `_MODEL_ANSWER`).
+- If the student's file count is less than or equal to the model answer file count, no deduction is applied.
+- If the student's file count exceeds the model answer file count, deduct one point from the student's total raw score for each extra file.
+- The deduction is applied before scaling the raw score to the activity total score in `_CONFIG` B1.
+- The final score, after deduction and scaling, is recorded in the `_SCORE` sheet.
+- The deduction logic is reflected in the student task submission list and any relevant UI feedback.
  */

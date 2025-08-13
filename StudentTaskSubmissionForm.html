@@ -114,6 +114,9 @@
         `;
         data.folders.forEach(function(folder) {
           var score = data.scores[folder.id] || 0;
+          // Determine button visibility
+          var analyzed = !!data.studentAnswers[folder.id];
+          var evaluated = !!data.studentResults[folder.id] || !!data.scores[folder.id];
           html += `
             <div class="student-row">
               <div class="item-col">
@@ -124,8 +127,9 @@
                 <input class="mdl-textfield__input score-input" type="number" min="0" value="${score}" id="score-${folder.id}" onchange="updateScore('${folder.id}')">
               </div>
               <div class="action-col">
-                <button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="analyze('${folder.id}')">Analyze</button>
-                <button class="mdl-button mdl-js-button mdl-button--raised" onclick="evaluateStudent('${folder.id}')">Evaluate</button>
+                ${!analyzed && !evaluated ? `<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="analyze('${folder.id}')">Analyze</button>` : ''}
+                ${analyzed && !evaluated ? `<button class="mdl-button mdl-js-button mdl-button--raised" onclick="evaluateStudent('${folder.id}')">Evaluate</button>` : ''}
+                ${evaluated ? `<span style="color:#43a047;font-weight:bold;">Evaluated</span>` : ''}
               </div>
             </div>
           `;
@@ -155,6 +159,12 @@
           .withSuccessHandler(function(msg) {
             setOverlay(false);
             showSnackbar(msg, 'success');
+            // Refresh list to update button visibility
+            google.script.run
+              .withSuccessHandler(function(data) {
+                renderStudentList(data);
+              })
+              .getStudentFoldersAndScores();
           })
           .withFailureHandler(function(err) {
             setOverlay(false);
@@ -169,7 +179,7 @@
           .withSuccessHandler(function(msg) {
             setOverlay(false);
             showSnackbar(msg, 'success');
-            // Optionally, refresh the list to update the score column
+            // Refresh list to update button visibility
             google.script.run
               .withSuccessHandler(function(data) {
                 renderStudentList(data);
