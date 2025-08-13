@@ -32,6 +32,7 @@
         <div class="mdl-textfield mdl-js-textfield mdl-textfield--floating-label" style="width:100%;">
           <input class="mdl-textfield__input" type="text" id="folderId" />
           <label class="mdl-textfield__label" for="folderId">Google Drive Folder ID or URL</label>
+          <label class="mdl-textfield__label" for="folderId">Google Drive Folder ID or URL</label>
         </div>
         <div id="status"></div>
       </div>
@@ -57,7 +58,25 @@
         return input;
       }
 
+      function extractFolderId(input) {
+        // If input is a URL, extract the folder ID
+        var urlPattern = /\/folders\/([a-zA-Z0-9_-]+)/;
+        var match = input.match(urlPattern);
+        if (match && match[1]) {
+          return match[1];
+        }
+        // Try alternate URL pattern
+        var altPattern = /id=([a-zA-Z0-9_-]+)/;
+        var altMatch = input.match(altPattern);
+        if (altMatch && altMatch[1]) {
+          return altMatch[1];
+        }
+        // Otherwise, assume it's a folder ID
+        return input;
+      }
+
       function analyzeFolder() {
+        var input = document.getElementById('folderId').value.trim();
         var input = document.getElementById('folderId').value.trim();
         var statusDiv = document.getElementById('status');
         if (!input) {
@@ -65,7 +84,13 @@
           return;
         }
         var folderId = extractFolderId(input);
+        if (!input) {
+          statusDiv.textContent = 'Please enter a folder ID or URL.';
+          return;
+        }
+        var folderId = extractFolderId(input);
         if (!folderId) {
+          statusDiv.textContent = 'Invalid folder ID or URL.';
           statusDiv.textContent = 'Invalid folder ID or URL.';
           return;
         }
