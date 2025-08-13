@@ -14,7 +14,7 @@ function onOpen() {
  */
 function showAnalyzeDialog() {
   var html = HtmlService.createHtmlOutputFromFile('AnalyzeDialog')
-    .setWidth(400)
-    .setHeight(300);
+    .setWidth(1024)
+    .setHeight(500);
   SpreadsheetApp.getUi().showModalDialog(html, 'Analyze Google Drive Folder');
 }
