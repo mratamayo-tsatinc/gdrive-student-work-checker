@@ -45,29 +45,25 @@ function processFolder(folder, path, results) {
   while (files.hasNext()) {
     var file = files.next();
     var mime = file.getMimeType();
-    if (mime.indexOf('image/') === 0) {
+    if (mime.startsWith('image/')) {
       var name = file.getName();
-      var type = mime;
-      var relPath = path ? path + '/' + name : name;
+      var relPath = path ? path + '/' : name;
       var size = file.getSize();
-      var width = '';
-      var height = '';
-      var aspect = '';
-      var orientation = '';
+      var width = '', height = '', aspect = '', orientation = '';
       try {
-        var blob = file.getBlob();
-        var img = Utilities.base64Encode(blob.getBytes());
-        var imgObj = ImagesService.openImage(blob);
-        width = imgObj.getWidth();
-        height = imgObj.getHeight();
+        var fileId = file.getId();
+        var meta = Drive.Files.get(fileId, {fields: "imageMediaMetadata"});
+        var imgMeta = meta.imageMediaMetadata || {};
+        width = imgMeta.width || '';
+        height = imgMeta.height || '';
         if (width && height) {
           aspect = getAspectRatio(width, height);
-          orientation = width > height ? 'Landscape' : (width < height ? 'Portrait' : 'Square');
+          orientation = width > height ? 'Landscape' : width < height ? 'Portrait' : 'Square';
         }
       } catch (err) {
-        // If image info can't be read, leave blank
+        Logger.log("Error processing image " + name + ": " + err.message);
       }
-      results.push([name, type, relPath, size, width, height, aspect, orientation]);
+      results.push([name, mime, relPath, size, width, height, aspect, orientation]);
     }
   }
   var folders = folder.getFolders();
