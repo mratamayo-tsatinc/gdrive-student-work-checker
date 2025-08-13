@@ -78,7 +78,7 @@ Evaluate Button Functionality
 - Records the final score (folder ID and score) in the `_SCORE` sheet.
 - Displays a white overlay with a spinner during processing for user feedback.
 - Update the score column in the student task submission list
-
+TODO:
 Additional Feature: Point Deduction for Extra Files
 - Compares the number of files submitted by each student (from `_STUDENT_ANSWERS`) to the number required by the model answer (from `_MODEL_ANSWER`).
 - If the student's file count is less than or equal to the model answer file count, no deduction is applied.
