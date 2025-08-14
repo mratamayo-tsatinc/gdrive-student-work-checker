@@ -1,6 +1,7 @@
 /**
  * Evaluates a specific student folder by comparing its files to the model answer.
  * Writes results to _STUDENT_RESULTS and updates the score in _SCORE.
+ * Applies point deduction for extra files and records detailed scoring columns.
  * @param {string} folderId The ID of the student Google Drive folder.
  * @return {string} Status message.
  */
@@ -31,6 +32,7 @@ function evaluateStudentFolder(folderId) {
         height: row[5]
       };
     }
+    var modelFileCount = modelData.length - 1;
 
     // Get student answers
     var studentSheet = ss.getSheetByName('_STUDENT_ANSWERS');
@@ -47,10 +49,10 @@ function evaluateStudentFolder(folderId) {
       }
     }
     if (studentRows.length === 0) {
-      return 'No files found for this student in _STUDENT_ANSWER.';
+      return 'No files found for this student in _STUDENT_ANSWERS.';
     }
-    Logger.log('Evaluating student: ' + studentName);
-    Logger.log(`Files found: ${studentRows.length}`);
+    var studentFileCount = studentRows.length;
+
     // Prepare results sheet
     var resultsSheetName = '_STUDENT_RESULTS';
     var resultsSheet = ss.getSheetByName(resultsSheetName);
@@ -73,7 +75,7 @@ function evaluateStudentFolder(folderId) {
     resultsSheet.getRange(1, 1, keepRows.length, keepRows[0].length).setValues(keepRows);
 
     // Evaluate each student file
-    var rawScore = 0;
+    var initialRawScore = 0;
     var results = [];
     studentRows.forEach(function(row) {
       var fileName = row[2];
@@ -94,8 +96,16 @@ function evaluateStudentFolder(folderId) {
         row[0], row[1], fileName,
         pathMatch ? '✔' : '', typeMatch ? '✔' : '', widthMatch ? '✔' : '', heightMatch ? '✔' : '', awarded
       ]);
-      rawScore += awarded;
+      initialRawScore += awarded;
     });
+
+    // Deduct points for extra files
+    var deduction = 0;
+    if (studentFileCount > modelFileCount) {
+      deduction = studentFileCount - modelFileCount;
+    }
+    var finalRawScore = initialRawScore - deduction;
+    if (finalRawScore < 0) finalRawScore = 0;
 
     // Write results
     if (results.length > 0) {
@@ -103,32 +113,44 @@ function evaluateStudentFolder(folderId) {
     }
 
     // Scale score
-    var finalScore = 0;
+    var adjustedScore = 0;
     if (results.length > 0) {
-      finalScore = Math.round(rawScore * totalScore / results.length);
+      adjustedScore = Math.round(finalRawScore * totalScore / results.length);
     }
 
-    // Update _SCORE sheet
+    // Update _SCORE sheet with detailed columns
     var scoreSheet = ss.getSheetByName('_SCORE');
     if (!scoreSheet) {
       scoreSheet = ss.insertSheet('_SCORE');
-      scoreSheet.appendRow(['Folder ID', 'Score']);
+      scoreSheet.appendRow([
+        'Folder Name', 'Folder ID', 'Initial Raw Score', 'Deduction', 'Final Raw Score', 'Adjusted Score'
+      ]);
     }
     var scoreData = scoreSheet.getDataRange().getValues();
     var found = false;
     for (var i = 1; i < scoreData.length; i++) {
-      if (scoreData[i][0] == folderId) {
-        scoreSheet.getRange(i + 1, 2).setValue(finalScore);
+      if (scoreData[i][1] == folderId) {
+        scoreSheet.getRange(i + 1, 1, 1, 6).setValues([[
+          studentName, folderId, initialRawScore, deduction, finalRawScore, adjustedScore
+        ]]);
         found = true;
         break;
       }
     }
     if (!found) {
-      scoreSheet.appendRow([folderId, finalScore]);
+      scoreSheet.appendRow([
+        studentName, folderId, initialRawScore, deduction, finalRawScore, adjustedScore
+      ]);
     }
 
-    return 'Evaluation complete. Raw score: ' + rawScore + '/' + results.length +
-      ', Final score: ' + finalScore + ' (scaled to ' + totalScore + '). See _STUDENT_RESULTS and _SCORE sheets.';
+    var deductionMsg = deduction > 0
+      ? ` (${deduction} point${deduction > 1 ? 's' : ''} deducted for extra file${deduction > 1 ? 's' : ''})`
+      : '';
+    return 'Evaluation complete. Initial raw score: ' + initialRawScore + '/' + results.length +
+      ', Deduction: ' + deduction +
+      ', Final raw score: ' + finalRawScore +
+      ', Adjusted score: ' + adjustedScore + ' (scaled to ' + totalScore + ')' + deductionMsg +
+      '. See _STUDENT_RESULTS and _SCORE sheets.';
   } catch (e) {
     return 'Error: ' + e.message;
   }
@@ -254,12 +276,12 @@ function getStudentFoldersAndScores() {
   var scoreSheet = ss.getSheetByName('_SCORE');
   if (!scoreSheet) {
     scoreSheet = ss.insertSheet('_SCORE');
-    scoreSheet.appendRow(['Folder ID', 'Score']);
+    scoreSheet.appendRow(['Folder Name', 'Folder ID', 'Initial Raw Score', 'Deduction', 'Final Raw Score', 'Adjusted Score']);
   }
   var scoreData = scoreSheet.getDataRange().getValues();
   var scores = {};
   for (var j = 1; j < scoreData.length; j++) {
-    scores[scoreData[j][0]] = scoreData[j][1];
+    scores[scoreData[j][1]] = scoreData[j][5];
   }
 
   // Check _STUDENT_ANSWERS for analyzed folders
@@ -284,11 +306,26 @@ function getStudentFoldersAndScores() {
     }
   }
 
+  var scoreDetails = {};
+  if (scoreSheet) {
+    var scoreData = scoreSheet.getDataRange().getValues();
+    for (var i = 1; i < scoreData.length; i++) {
+      var folderId = scoreData[i][1];
+      scoreDetails[folderId] = {
+        initialRawScore: scoreData[i][2],
+        deduction: scoreData[i][3],
+        finalRawScore: scoreData[i][4],
+        adjustedScore: scoreData[i][5]
+      };
+    }
+  }
+  // Return in the object:
   return {
     folders: folders,
     scores: scores,
     studentAnswers: studentAnswers,
-    studentResults: studentResults
+    studentResults: studentResults,
+    scoreDetails: scoreDetails
   };
 }
 
@@ -303,7 +340,9 @@ function updateStudentScore(folderId, score) {
   var scoreSheet = ss.getSheetByName('_SCORE');
   if (!scoreSheet) {
     scoreSheet = ss.insertSheet('_SCORE');
-    scoreSheet.appendRow(['Folder ID', 'Score']);
+    scoreSheet.appendRow([
+        'Folder Name', 'Folder ID', 'Initial Raw Score', 'Deduction', 'Final Raw Score', 'Adjusted Score'
+      ]);
   }
   var data = scoreSheet.getDataRange().getValues();
   var found = false;

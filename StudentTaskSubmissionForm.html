@@ -25,11 +25,12 @@
       .mdl-spinner { margin: 0 auto; }
       .student-row { display: flex; align-items: center; border-bottom: 1px solid #eee; padding: 8px 0; }
       .item-col { flex: 2; }
-      .score-col { flex: 1; }
+      .score-col { flex: 2; }
       .action-col { flex: 1; text-align: right; }
       .folder-name { font-weight: bold; color: #3f51b5; cursor: pointer; }
       .folder-id { font-size: 12px; color: #888; }
       .score-input { width: 60px; }
+      .score-details { font-size: 12px; color: #666; }
       /* Snackbar styles */
       #snackbar {
         visibility: hidden;
@@ -68,9 +69,7 @@
   <body>
     <dialog class="mdl-dialog" open>
       <div class="mdl-dialog-content">
-        <!--
         <h5 class="mdl-dialog__title">Student Task Submission</h5>
-      -->
         <div id="student-list"></div>
         <div id="status" style="display:none"></div>
       </div>
@@ -110,7 +109,7 @@
         var html = `
           <div style="display:flex;font-weight:bold;border-bottom:2px solid #ccc;padding-bottom:4px;margin-bottom:8px;">
             <div class="item-col">Item</div>
-            <div class="score-col">Score</div>
+            <div class="score-col">Score Details</div>
             <div class="action-col">Action</div>
           </div>
         `;
@@ -119,6 +118,18 @@
           // Determine button visibility
           var analyzed = !!data.studentAnswers[folder.id];
           var evaluated = !!data.studentResults[folder.id] || !!data.scores[folder.id];
+
+          // Show detailed score columns if available
+          var scoreDetails = '';
+          if (data.scoreDetails && data.scoreDetails[folder.id]) {
+            var d = data.scoreDetails[folder.id];
+            scoreDetails = `
+              <div class="score-details">
+                Raw: ${d.initialRawScore} | Deduction: ${d.deduction} | Final Raw: ${d.finalRawScore} | Adjusted: ${d.adjustedScore}
+              </div>
+            `;
+          }
+
           html += `
             <div class="student-row">
               <div class="item-col">
@@ -127,6 +138,7 @@
               </div>
               <div class="score-col">
                 <input class="mdl-textfield__input score-input" type="number" min="0" value="${score}" id="score-${folder.id}" onchange="updateScore('${folder.id}')">
+                ${scoreDetails}
               </div>
               <div class="action-col">
                 ${!analyzed && !evaluated ? `<button class="mdl-button mdl-js-button mdl-button--raised mdl-button--colored" onclick="analyze('${folder.id}')">Analyze</button>` : ''}
@@ -181,7 +193,7 @@
           .withSuccessHandler(function(msg) {
             setOverlay(false);
             showSnackbar(msg, 'success');
-            // Refresh list to update button visibility
+            // Refresh list to update button visibility and score details
             google.script.run
               .withSuccessHandler(function(data) {
                 renderStudentList(data);

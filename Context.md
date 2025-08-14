@@ -78,12 +78,20 @@ Evaluate Button Functionality
 - Records the final score (folder ID and score) in the `_SCORE` sheet.
 - Displays a white overlay with a spinner during processing for user feedback.
 - Update the score column in the student task submission list
-TODO:
-Additional Feature: Point Deduction for Extra Files
-- Compares the number of files submitted by each student (from `_STUDENT_ANSWERS`) to the number required by the model answer (from `_MODEL_ANSWER`).
-- If the student's file count is less than or equal to the model answer file count, no deduction is applied.
-- If the student's file count exceeds the model answer file count, deduct one point from the student's total raw score for each extra file.
-- The deduction is applied before scaling the raw score to the activity total score in `_CONFIG` B1.
-- The final score, after deduction and scaling, is recorded in the `_SCORE` sheet.
-- The deduction logic is reflected in the student task submission list and any relevant UI feedback.
+
+### Additional Feature: Point Deduction for Extra Files
+
+- For each student, compare the number of files listed in `_STUDENT_ANSWERS` (student submission) with the number of files in `_MODEL_ANSWER` (model answer).
+- **No deduction**: If the student's file count is **less than or equal to** the model answer file count, the raw score remains unchanged.
+- **Deduction applied**: If the student's file count is **greater than** the model answer file count, subtract **one point** from the student's total raw score for **each extra file** submitted.
+- The deduction is calculated **before** scaling the raw score to the activity total score specified in `_CONFIG` cell B1.
+- Update the `_SCORE` sheet to include the following columns for each evaluated student submission:
+    1. **Folder Name**
+    2. **Folder ID**
+    3. **Initial Raw Score** (before deduction)
+    4. **Deduction** (number of points subtracted for extra files)
+    5. **Final Raw Score** (after deduction)
+    6. **Adjusted Score** (final score scaled to the activity total)
+- The **Adjusted Score** (after deduction and scaling) is recorded in the `_SCORE` sheet.
+- Ensure the deduction logic and updated score details are reflected in the student task submission list and any relevant UI feedback, displaying: initial raw score, deduction, final raw score, and adjusted score.
  */
