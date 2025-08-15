@@ -29,7 +29,11 @@ function evaluateStudentFolder(folderId) {
         path: row[2],
         type: row[1],
         width: row[4],
-        height: row[5]
+        height: row[5],
+        aspectRatio: row[6],
+        isTypeChecked: row[8],
+        isDimensionChecked: row[9],
+        isAspectRatioChecked: row[10]
       };
     }
     var modelFileCount = modelData.length - 1;
@@ -60,7 +64,7 @@ function evaluateStudentFolder(folderId) {
       resultsSheet = ss.insertSheet(resultsSheetName);
       resultsSheet.appendRow([
         'Student Folder Name', 'Student Folder ID', 'Student File Name',
-        'Path Match', 'Type Match', 'Width Match', 'Height Match', 'Awarded Score'
+        'Path Match', 'Type Match', 'Width Match', 'Height Match', 'Aspect Ratio Match', 'Awarded Score'
       ]);
     }
     // Remove previous results for this student
@@ -83,18 +87,21 @@ function evaluateStudentFolder(folderId) {
       var studentType = row[3];
       var studentWidth = row[6];
       var studentHeight = row[7];
+      var studentAspectRatio = row[8];
       var model = modelFiles[fileName];
-      var pathMatch = false, typeMatch = false, widthMatch = false, heightMatch = false, awarded = 0;
+      Logger.log(model);
+      var pathMatch = false, typeMatch = false, widthMatch = false, heightMatch = false, aspectRatioMatch = false, awarded = 0;
       if (model) {
         pathMatch = (String(studentPath) === String(model.path));
-        typeMatch = (String(studentType) === String(model.type));
-        widthMatch = (String(studentWidth) === String(model.width));
-        heightMatch = (String(studentHeight) === String(model.height));
-        awarded = (pathMatch && typeMatch && widthMatch && heightMatch) ? 1 : 0;
+        typeMatch = model.isTypeChecked? (String(studentType) === String(model.type)): true;
+        widthMatch = model.isDimensionChecked? (String(studentWidth) === String(model.width)): true;
+        heightMatch = model.isDimensionChecked? (String(studentHeight) === String(model.height)): true;
+        aspectRatioMatch = model.isAspectRatioChecked? (String(studentAspectRatio) === String(model.aspectRatio)): true;
+        awarded = (pathMatch && typeMatch && widthMatch && heightMatch && aspectRatioMatch) ? 1 : 0;
       }
       results.push([
         row[0], row[1], fileName,
-        pathMatch ? '✔' : '', typeMatch ? '✔' : '', widthMatch ? '✔' : '', heightMatch ? '✔' : '', awarded
+        pathMatch ? '✔' : '', typeMatch ? '✔' : '', widthMatch ? '✔' : '', heightMatch ? '✔' : '', aspectRatioMatch ? '✔': '' ,awarded
       ]);
       initialRawScore += awarded;
     });
@@ -235,14 +242,14 @@ function processStudentFolder(folder, path, results, studentName, studentId) {
         width = imgMeta.width || '';
         height = imgMeta.height || '';
         if (width && height) {
-          aspect = getAspectRatio(width, height);
+          aspect = getAspectRatio2(width, height);
           orientation = width > height ? 'Landscape' : width < height ? 'Portrait' : 'Square';
         }
       } catch (err) {
         Logger.log("Error processing image " + name + ": " + err.message);
       }
     }
-    results.push([studentName, studentId, name, mime, relPath, size, width, height, aspect, orientation]);
+    results.push([studentName, studentId, relPath+name, mime, relPath, size, width, height, aspect+"\u2008", orientation]);
   }
   var folders = folder.getFolders();
   while (folders.hasNext()) {
@@ -412,7 +419,8 @@ function analyzeDriveFolder(folderId) {
     // Write headers
     sheet.appendRow([
       'File Name', 'File Type', 'Path', 'Size (bytes)', 
-      'Width', 'Height', 'Aspect Ratio', 'Orientation'
+      'Width', 'Height', 'Aspect Ratio', 'Orientation',
+      'Is Type Checked', 'Is Dimension Checked', 'Is Aspect Ratio Checked'
     ]);
     var folder = DriveApp.getFolderById(folderId);
     var results = [];
@@ -443,7 +451,7 @@ function processFolder(folder, path, results) {
     var mime = file.getMimeType();
     if (mime.startsWith('image/')) {
       var name = file.getName();
-      var relPath = path ? path + '/' : '/';
+      var relPath = path ? path + '/': '/';
       var size = file.getSize();
       var width = '', height = '', aspect = '', orientation = '';
       try {
@@ -453,13 +461,13 @@ function processFolder(folder, path, results) {
         width = imgMeta.width || '';
         height = imgMeta.height || '';
         if (width && height) {
-          aspect = getAspectRatio(width, height);
+          aspect = getAspectRatio2(width, height);
           orientation = width > height ? 'Landscape' : width < height ? 'Portrait' : 'Square';
         }
       } catch (err) {
         Logger.log("Error processing image " + name + ": " + err.message);
       }
-      results.push([name, mime, relPath, size, width, height, aspect, orientation]);
+      results.push([relPath+name, mime, relPath, size, width, height, aspect+"\u2008", orientation, true, true, true]);
     }
   }
   var folders = folder.getFolders();
@@ -501,3 +509,40 @@ function getAspectRatio(width, height) {
   return w + ':' + h;
 }
 
+function getAspectRatio2(width, height) {
+  var commonRatios = {
+    '1:1': 1 / 1,
+    '4:3': 4 / 3,
+    '3:2': 3 / 2,
+    '5:4': 5 / 4,
+    '16:9': 16 / 9,
+    '16:10': 16 / 10,
+    '21:9': 21 / 9,
+    '4:5': 4 / 5,
+    '5:7': 5 / 7,
+    '9:16': 9 / 16
+  };
+  
+  var actual = width / height;
+  var bestMatch = null;
+  var minDiff = Infinity;
+  
+  for (var key in commonRatios) {
+    var diff = Math.abs(actual - commonRatios[key]);
+    if (diff < minDiff) {
+      minDiff = diff;
+      bestMatch = key;
+    }
+  }
+  
+  // If close enough (within 2%), return match
+  if (minDiff <= 0.02) return bestMatch;
+  
+  // Otherwise, reduce with GCD for closest integer ratio
+  function gcd(a, b) { return b == 0 ? a : gcd(b, a % b); }
+  var divisor = gcd(width, height);
+  var w = Math.round(width / divisor);
+  var h = Math.round(height / divisor);
+  
+  return w + ':' + h; // Zero-width space to prevent Google Sheets from auto-formatting as a date
+}

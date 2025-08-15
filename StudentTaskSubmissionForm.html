@@ -101,6 +101,7 @@
       }
 
       function renderStudentList(data) {
+        
         var listDiv = document.getElementById('student-list');
         if (!data.folders.length) {
           listDiv.innerHTML = '<div>No student folders found.</div>';
@@ -150,6 +151,7 @@
         });
         listDiv.innerHTML = html;
         componentHandler.upgradeDom();
+        
       }
 
       function updateScore(folderId) {
@@ -171,12 +173,13 @@
         setOverlay(true);
         google.script.run
           .withSuccessHandler(function(msg) {
-            setOverlay(false);
+            
             showSnackbar(msg, 'success');
             // Refresh list to update button visibility
             google.script.run
               .withSuccessHandler(function(data) {
                 renderStudentList(data);
+                setOverlay(false);
               })
               .getStudentFoldersAndScores();
           })
@@ -191,12 +194,14 @@
         setOverlay(true);
         google.script.run
           .withSuccessHandler(function(msg) {
-            setOverlay(false);
+            //setOverlay(false);
             showSnackbar(msg, 'success');
             // Refresh list to update button visibility and score details
             google.script.run
               .withSuccessHandler(function(data) {
+                
                 renderStudentList(data);
+                setOverlay(false);
               })
               .getStudentFoldersAndScores();
           })
